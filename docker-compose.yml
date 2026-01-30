@@ -1,0 +1,48 @@
+services:
+  mysql:
+    image: mysql:8.0
+    container_name: lunch-mysql
+    environment:
+      MYSQL_ROOT_PASSWORD: ${MYSQL_ROOT_PASSWORD:-root}
+      MYSQL_DATABASE: lunch
+      MYSQL_USER: ${MYSQL_USER:-lunch_user}
+      MYSQL_PASSWORD: ${MYSQL_PASSWORD:-lunch_pass}
+      TZ: Asia/Seoul
+    volumes:
+      - mysql_data:/var/lib/mysql
+    command:
+      - --character-set-server=utf8mb4
+      - --collation-server=utf8mb4_unicode_ci
+    healthcheck:
+      test: ["CMD", "mysqladmin", "ping", "-h", "localhost"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+      start_period: 30s
+    networks:
+      - lunch-network
+    restart: always
+
+  app:
+    image: ${DOCKERHUB_USERNAME}/lunch-app:${IMAGE_TAG}
+    container_name: lunch-app
+    environment:
+      SPRING_DATASOURCE_URL: jdbc:mysql://mysql:3306/lunch?useSSL=false&allowPublicKeyRetrieval=true&serverTimezone=Asia/Seoul&characterEncoding=utf8
+      SPRING_DATASOURCE_USERNAME: ${MYSQL_USER:-lunch_user}
+      SPRING_DATASOURCE_PASSWORD: ${MYSQL_PASSWORD:-lunch_pass}
+      SERVER_PORT: 8080
+    ports:
+      - "8080:8080"
+    depends_on:
+      mysql:
+        condition: service_healthy
+    networks:
+      - lunch-network
+    restart: always
+
+volumes:
+  mysql_data:
+
+networks:
+  lunch-network:
+    driver: bridge
